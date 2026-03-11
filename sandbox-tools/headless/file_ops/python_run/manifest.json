@@ -1,0 +1,1 @@
+{"name":"python_run","tier":"microvm","entrypoint":"main.py","timeout":60}
