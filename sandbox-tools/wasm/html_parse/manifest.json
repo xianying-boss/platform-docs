@@ -1,0 +1,7 @@
+{
+  "name": "html_parse",
+  "tier": "wasm",
+  "entrypoint": "html_parse.wasm",
+  "timeout": 10,
+  "description": "Parse HTML and extract structured data (title, links, text, metadata)."
+}
