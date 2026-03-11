@@ -1,0 +1,1 @@
+{"name":"browser_open","tier":"gui","entrypoint":"browser.py","timeout":120}
