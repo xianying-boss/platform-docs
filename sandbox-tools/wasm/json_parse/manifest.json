@@ -1,0 +1,1 @@
+{"name":"json_parse","tier":"wasm","entrypoint":"json_parse.wasm","timeout":10,"description":"Query a JSON document with dot-notation path."}
