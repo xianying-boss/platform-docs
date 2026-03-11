@@ -1,0 +1,136 @@
+# sandbox-platform — Cline Rules
+
+## READ EVERY SESSION
+Before doing anything, read all files in order:
+1. memory-bank/projectbrief.md
+2. memory-bank/productContext.md
+3. memory-bank/systemPatterns.md
+4. memory-bank/techContext.md
+5. memory-bank/activeContext.md
+6. memory-bank/progress.md
+
+If any file is missing, recreate it from conversation context before continuing.
+
+---
+
+## LANGUAGE
+- All communication with user: **English**
+- All code, comments, variable names: **English**
+- Log messages: **English**
+
+---
+
+## GO CODE STYLE
+
+### Required
+- Go version 1.23
+- `log/slog` for all logging — NEVER use `fmt.Println` or `log.Printf` in production code
+- All errors must be wrapped: `fmt.Errorf("context: %w", err)` — NEVER discard errors
+- Every function performing I/O must accept `context.Context` as first argument
+- Use `any` instead of `interface{}`
+- Dependency injection via constructor — NEVER use global mutable state
+
+### Forbidden
+- `panic()` outside `main()` startup validation
+- `time.Sleep` in production code — use context timeout instead
+- `os.Exit()` outside `main()`
+- `_ = err` (discarding errors)
+- Storing secrets in `config/app.yaml`
+
+---
+
+## PACKAGE STRUCTURE — IMPORT RULES
+
+```
+cmd/              → dependency wiring only, no business logic
+internal/api      → HTTP layer only, NEVER import internal/scheduler directly
+internal/router   → routing rules only, NEVER import internal/runtime
+internal/runtime  → runtime execution only
+internal/queue    → Redis only, NEVER import internal/storage
+internal/storage  → object storage only
+internal/tool     → tool manifest/registry only
+```
+
+Each package may only import packages deeper in the hierarchy, never upward.
+
+---
+
+## RUNTIME TIERS
+
+| Tier     | Runtime     | Phase |
+|----------|-------------|-------|
+| wasm     | Wasmtime CLI| 1     |
+| microvm  | Firecracker | 2     |
+| gui      | Docker      | 3     |
+
+- WASM modules live at: `{dataDir}/wasm-modules/{tool}.wasm`
+- VM snapshots live at: `{dataDir}/snapshots/{name}/state` and `/mem`
+- Docker image: `sandbox/desktop-runner:latest`
+
+---
+
+## FIRECRACKER RULES
+
+- Always create VM from snapshot — cold boot is only for snapshot building
+- Snapshot builder script: `scripts/build-snapshot.sh`
+- VM socket path pattern: `/tmp/firecracker-{vmID}.sock`
+- Firecracker API runs over Unix socket, not TCP
+- After job completes: stop VM, replenish pool asynchronously
+- Target cold-start from snapshot: **< 80ms**
+
+---
+
+## TOOL MANIFEST CONTRACT
+
+Every tool directory must contain a `manifest.json`:
+```json
+{
+  "name": "tool_name",
+  "tier": "wasm|microvm|gui",
+  "entrypoint": "main.py",
+  "timeout": 60
+}
+```
+Tools communicate via:
+- **Input**: `TOOL_INPUT` environment variable (JSON string)
+- **Output**: stdout (JSON string with at minimum `"exit_code"` field)
+
+---
+
+## API CONTRACT
+
+- `POST /v1/execute` → async → HTTP 202 + `{"job_id":"..."}`
+- `GET /v1/job/:id` → poll for result
+- `GET /v1/tools` → list registered tools
+- `GET /v1/nodes` → list active nodes
+- Rate limit 429 → must include `Retry-After: 60` header
+- All responses: `Content-Type: application/json`
+- Empty JWT key path = dev mode (inject `agent_id="dev-agent"`) — LOCAL DEV ONLY
+
+---
+
+## KNOWN BUGS (from original codebase — now fixed)
+
+| Bug | File | Fix |
+|-----|------|-----|
+| Rate limiter tier always "microvm" | middleware/ratelimit.go | Tier injected from handler via `c.Locals("tier")` before middleware reads it |
+| Config key not in viper | cmd/api-server/config.go | All config via viper, no `os.Getenv` bypasses |
+| `grpc.WithTimeout` deprecated | (removed) | Use `context.WithTimeout` + `grpc.NewClient()` |
+
+---
+
+## TESTING
+
+- Unit tests: `_test.go` in same package
+- Integration tests: `tests/integration/` with build tag `//go:build integration`
+- NEVER connect to real Redis or Firecracker in unit tests — use interfaces/mocks
+
+---
+
+## UPDATE MEMORY BANK
+
+After any significant task, update the relevant file:
+- Finished feature implementation → update `progress.md`
+- New architecture decision → update `systemPatterns.md`
+- New bug or issue → update `activeContext.md`
+- Starting new focus area → update `activeContext.md`
