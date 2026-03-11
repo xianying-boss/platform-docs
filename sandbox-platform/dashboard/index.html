@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>sandbox-platform · Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:     #09090b;
+    --surface:#18181b;
+    --border: #27272a;
+    --muted:  #3f3f46;
+    --text:   #fafafa;
+    --sub:    #a1a1aa;
+    --dim:    #52525b;
+    --violet: #a78bfa;
+    --blue:   #60a5fa;
+    --green:  #34d399;
+    --amber:  #fbbf24;
+    --red:    #f87171;
+  }
+  html{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+  body{min-height:100vh}
+
+  /* scrollbar */
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:var(--muted);border-radius:3px}
+
+  /* layout */
+  .wrap{max-width:1280px;margin:0 auto;padding:0 24px}
+
+  /* header */
+  header{
+    position:sticky;top:0;z-index:50;
+    background:rgba(9,9,11,0.92);
+    backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);
+    height:56px;display:flex;align-items:center;
+  }
+  .header-inner{display:flex;align-items:center;justify-content:space-between;width:100%}
+  .logo{display:flex;align-items:center;gap:10px}
+  .dots{display:flex;gap:5px}
+  .dot{width:8px;height:8px;border-radius:50%}
+  .brand{font-weight:600;font-size:13px}
+  .brand-sub{color:var(--dim);font-size:12px}
+  .sep{color:var(--border);margin:0 4px}
+  .nav-right{display:flex;align-items:center;gap:10px}
+  .last-refresh{font-size:11px;color:var(--dim)}
+  button{cursor:pointer;border:none;background:none;color:inherit;font:inherit}
+  .btn-live{
+    font-size:11px;padding:5px 10px;border-radius:8px;border:1px solid;
+    transition:all .2s;
+    border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.08);color:var(--green);
+  }
+  .btn-live.paused{border-color:var(--muted);background:var(--surface);color:var(--dim)}
+  .btn-refresh{padding:6px;border-radius:8px;background:var(--surface);transition:background .2s}
+  .btn-refresh:hover{background:var(--muted)}
+  .btn-refresh svg{display:block}
+  .spin{animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* main */
+  main{padding:24px 0 48px;display:flex;flex-direction:column;gap:24px}
+
+  /* section header */
+  .sec-hdr{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+  .sec-hdr h2{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--sub)}
+  .sec-badge{margin-left:auto;font-size:11px;color:var(--dim);background:var(--surface);padding:2px 8px;border-radius:99px}
+
+  /* grid */
+  .g2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+  .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .g-lg{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:900px){.g3,.g4{grid-template-columns:repeat(2,1fr)}.g-lg{grid-template-columns:1fr}}
+  @media(max-width:600px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+  /* card */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px}
+
+  /* stat card */
+  .stat-row{display:flex;align-items:flex-start;justify-content:space-between}
+  .stat-label{font-size:11px;color:var(--dim);font-weight:500;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+  .stat-val{font-size:30px;font-weight:700;line-height:1}
+  .stat-sub{font-size:11px;color:var(--dim);margin-top:4px}
+  .stat-icon{padding:8px;border-radius:8px;background:var(--muted)}
+
+  /* load bar */
+  .bar-wrap{width:100%;background:var(--muted);border-radius:99px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:99px;transition:width .7s ease}
+  .bar-sm{height:6px}
+  .bar-xs{height:5px}
+
+  /* status dot */
+  .pulse{animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  /* tier badge */
+  .tier-badge{
+    display:inline-flex;align-items:center;gap:4px;
+    padding:2px 8px;border-radius:6px;border:1px solid;
+    font-size:11px;font-weight:500;white-space:nowrap;
+  }
+
+  /* tabs */
+  .tabs{display:flex;gap:4px;margin-bottom:16px}
+  .tab{
+    padding:4px 12px;border-radius:8px;font-size:12px;font-weight:500;
+    transition:all .15s;color:var(--dim);
+  }
+  .tab.active{background:var(--muted);color:var(--text)}
+  .tab:hover:not(.active){color:var(--sub)}
+
+  /* table rows */
+  .tool-row{
+    display:flex;align-items:center;gap:10px;
+    padding:8px 12px;border-radius:8px;transition:background .15s;
+  }
+  .tool-row:hover{background:var(--bg)}
+  .tool-name{font-size:13px;font-weight:500;color:var(--text);flex:1}
+  .tool-entry{font-size:11px;color:var(--dim);font-family:monospace;display:none}
+  .tool-row:hover .tool-entry{display:block}
+  .tool-timeout{font-size:11px;color:var(--sub)}
+
+  /* pool stat boxes */
+  .pool-box{border-radius:10px;padding:12px;text-align:center}
+  .pool-val{font-size:22px;font-weight:700;line-height:1}
+  .pool-lbl{font-size:11px;color:var(--dim);margin-top:4px}
+
+  /* jobs grid */
+  .jobs-box{background:var(--muted);border-radius:10px;padding:12px;text-align:center;flex:1}
+
+  /* node footer */
+  .node-footer{display:flex;justify-content:space-between;padding-top:12px;margin-top:12px;border-top:1px solid var(--border)}
+  .nf-item{font-size:11px}
+  .nf-label{color:var(--dim)}
+  .nf-val{color:var(--sub);font-weight:500}
+
+  /* footer */
+  .page-footer{text-align:center;padding:16px 0 0;font-size:11px;color:var(--border)}
+  .page-footer code{color:var(--dim)}
+
+  /* color utils */
+  .c-green{color:var(--green)}.c-amber{color:var(--amber)}.c-red{color:var(--red)}.c-violet{color:var(--violet)}.c-blue{color:var(--blue)}.c-sub{color:var(--sub)}.c-dim{color:var(--dim)}
+  .fill-green{background:var(--green)}.fill-amber{background:var(--amber)}.fill-red{background:var(--red)}.fill-violet{background:var(--violet)}.fill-blue{background:var(--blue)}.fill-emerald{background:var(--green)}
+
+  /* loading */
+  .loading-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+  .spinner{width:32px;height:32px;border:2px solid var(--violet);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+// ── Mock data ─────────────────────────────────────────────────────────────────
+function generateMock() {
+  const r  = (a,b) => Math.random()*(b-a)+a;
+  const ri = (a,b) => Math.floor(r(a,b));
+  const nodes = ["node-1","node-2"].map((id,i) => ({
+    id, address:`10.0.0.${10+i}:8080`,
+    status: Math.random()>0.08?"active":"offline",
+    load: r(0.05,0.72),
+    last_seen: new Date(Date.now()-ri(1000,7000)).toISOString(),
+    registered_at: new Date(Date.now()-3600000).toISOString(),
+    queue_depth: ri(0,12),
+    runtimes:{
+      wasm:    {active:ri(0,600),  capacity:10000,pool_size:0 },
+      microvm: {active:ri(0,45),   capacity:100,  pool_size:10},
+      gui:     {active:ri(0,6),    capacity:20,   pool_size:3 },
+    }
+  }));
+  return {
+    timestamp: new Date().toISOString(),
+    cluster:{
+      total_nodes:nodes.length,
+      active_nodes:nodes.filter(n=>n.status==="active").length,
+      offline_nodes:nodes.filter(n=>n.status!=="active").length,
+      avg_load:nodes.reduce((s,n)=>s+n.load,0)/nodes.length,
+    },
+    nodes,
+    pools:{
+      wasm:    {tier:"wasm",    pool_size:0,  active:ri(0,900), available:ri(900,10000),utilization:r(0.01,0.2)},
+      microvm: {tier:"microvm",pool_size:10, active:ri(0,70),  available:ri(70,200),   utilization:r(0.05,0.55)},
+      gui:     {tier:"gui",    pool_size:3,  active:ri(0,8),   available:ri(8,40),     utilization:r(0.02,0.38)},
+    },
+    queue:{global_depth:ri(0,28),per_node:{"node-1":ri(0,14),"node-2":ri(0,14)}},
+    jobs:{total_completed:ri(1400,2200),total_failed:ri(8,70),total_pending:ri(0,20)},
+    tools:[
+      {name:"html_parse",       tier:"wasm",   timeout:10, entrypoint:"html_parse.wasm"},
+      {name:"json_parse",       tier:"wasm",   timeout:10, entrypoint:"json_parse.wasm"},
+      {name:"markdown_convert", tier:"wasm",   timeout:10, entrypoint:"markdown_convert.wasm"},
+      {name:"docx_generate",    tier:"wasm",   timeout:30, entrypoint:"docx_generate.wasm"},
+      {name:"python_run",       tier:"microvm",timeout:60, entrypoint:"main.py"},
+      {name:"bash_run",         tier:"microvm",timeout:60, entrypoint:"run.py"},
+      {name:"git_clone",        tier:"microvm",timeout:120,entrypoint:"clone.py"},
+      {name:"file_ops",         tier:"microvm",timeout:30, entrypoint:"file_ops.py"},
+      {name:"browser_open",     tier:"gui",    timeout:120,entrypoint:"browser.py"},
+      {name:"web_scrape",       tier:"gui",    timeout:120,entrypoint:"scrape.py"},
+      {name:"excel_edit",       tier:"gui",    timeout:60, entrypoint:"excel.py"},
+      {name:"office_automation",tier:"gui",    timeout:300,entrypoint:"office.py"},
+    ],
+  };
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+const pct = v => `${(v*100).toFixed(1)}%`;
+const ago = iso => {
+  const s = Math.floor((Date.now()-new Date(iso))/1000);
+  if(s<60) return `${s}s ago`;
+  if(s<3600) return `${Math.floor(s/60)}m ago`;
+  return `${Math.floor(s/3600)}h ago`;
+};
+const loadClass = v => v<0.4?"c-green":v<0.7?"c-amber":"c-red";
+const loadFill  = v => v<0.4?"fill-green":v<0.7?"fill-amber":"fill-red";
+
+const TIER = {
+  wasm:    {bg:"rgba(167,139,250,.12)",border:"rgba(167,139,250,.25)",text:"#a78bfa",fill:"#a78bfa"},
+  microvm: {bg:"rgba(96,165,250,.12)", border:"rgba(96,165,250,.25)", text:"#60a5fa",fill:"#60a5fa"},
+  gui:     {bg:"rgba(52,211,153,.12)", border:"rgba(52,211,153,.25)", text:"#34d399",fill:"#34d399"},
+};
+
+// ── SVG Icons (lightweight inline) ───────────────────────────────────────────
+const Icon = ({d,size=16,cls=""}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+    className={cls} style={{display:"block",flexShrink:0}}>
+    {Array.isArray(d)?d.map((p,i)=><path key={i} d={p}/>):<path d={d}/>}
+  </svg>
+);
+const Icons = {
+  server:  ["M22 2H2v8h20V2z","M22 14H2v8h20v-8z","M6 6h.01M6 18h.01"],
+  cpu:     ["M18 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z","M9 9h6v6H9z","M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 15h3M1 9h3M1 15h3"],
+  zap:     "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
+  monitor: ["M20 3H4a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1z","M8 21h8M12 17v4"],
+  activity:["M22 12h-4l-3 9L9 3l-3 9H2"],
+  layers:  ["M12 2 2 7l10 5 10-5-10-5z","M2 17l10 5 10-5","M2 12l10 5 10-5"],
+  box:     ["M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z","M3.27 6.96L12 12.01l8.73-5.05","M12 22.08V12"],
+  refresh: "M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15",
+  check:   ["M22 11.08V12a10 10 0 1 1-5.93-9.14","M22 4 12 14.01l-3-3"],
+  x:       "M18 6 6 18M6 6l12 12",
+  clock:   ["M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z","M12 6v6l4 2"],
+  wifi:    ["M5 12.55a11 11 0 0 1 14.08 0","M1.42 9a16 16 0 0 1 21.16 0","M8.53 16.11a6 6 0 0 1 6.95 0","M12 20h.01"],
+  wifioff: "M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.56 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01",
+  hdd:     ["M22 12H2","M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z","M6 16h.01M10 16h.01"],
+  db:      ["M12 2c5.523 0 10 1.343 10 3s-4.477 3-10 3S2 6.657 2 5s4.477-3 10-3z","M2 5v6c0 1.657 4.477 3 10 3s10-1.343 10-3V5","M2 11v6c0 1.657 4.477 3 10 3s10-1.343 10-3v-6"],
+  bar:     ["M18 20V10","M12 20V4","M6 20v-6"],
+  chevron: "M9 18l6-6-6-6",
+  git:     ["M6 3v12","M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z","M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z","M15 6a9 9 0 0 1-9 9"],
+};
+
+// ── Components ────────────────────────────────────────────────────────────────
+
+function TierBadge({tier}) {
+  const t = TIER[tier]||TIER.wasm;
+  const ic = tier==="wasm"?Icons.zap:tier==="microvm"?Icons.cpu:Icons.monitor;
+  return (
+    <span className="tier-badge" style={{background:t.bg,borderColor:t.border,color:t.text}}>
+      <Icon d={ic} size={10} />{tier}
+    </span>
+  );
+}
+
+function SectionHdr({icon,title,count}) {
+  return (
+    <div className="sec-hdr">
+      <Icon d={icon} size={15} cls="c-dim" />
+      <h2>{title}</h2>
+      {count!==undefined&&<span className="sec-badge">{count}</span>}
+    </div>
+  );
+}
+
+function LoadBar({value,height="6px"}) {
+  return (
+    <div className="bar-wrap" style={{height}}>
+      <div className={`bar-fill ${loadFill(value)}`} style={{height,width:pct(Math.min(value,1))}} />
+    </div>
+  );
+}
+
+function StatCard({icon,label,value,sub,colorClass=""}) {
+  return (
+    <div className="card">
+      <div className="stat-row">
+        <div>
+          <div className="stat-label">{label}</div>
+          <div className={`stat-val ${colorClass}`}>{value}</div>
+          {sub&&<div className="stat-sub">{sub}</div>}
+        </div>
+        <div className="stat-icon"><Icon d={icon} size={17} cls="c-sub" /></div>
+      </div>
+    </div>
+  );
+}
+
+function NodeCard({node}) {
+  const active = node.status==="active";
+  return (
+    <div className="card">
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{
+            width:8,height:8,borderRadius:"50%",
+            background:active?"#34d399":"#f87171",
+            ...(active?{animation:"pulse 2s infinite"}:{})
+          }}/>
+          <span style={{fontWeight:600,fontSize:13}}>{node.id}</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <Icon d={active?Icons.wifi:Icons.wifioff} size={13} cls={active?"c-green":"c-red"} />
+          <span style={{fontSize:12,fontWeight:500,color:active?"#34d399":"#f87171"}}>{node.status}</span>
+        </div>
+      </div>
+
+      <div style={{fontFamily:"monospace",fontSize:11,color:"#52525b",marginBottom:16}}>{node.address}</div>
+
+      <div style={{marginBottom:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+          <span style={{fontSize:11,color:"var(--dim)"}}>Load</span>
+          <span style={{fontSize:11,fontWeight:600}} className={loadClass(node.load)}>{pct(node.load)}</span>
+        </div>
+        <LoadBar value={node.load} height="7px" />
+      </div>
+
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {Object.entries(node.runtimes).map(([tier,rt])=>{
+          const t=TIER[tier]||TIER.wasm;
+          const u=rt.capacity>0?rt.active/rt.capacity:0;
+          return (
+            <div key={tier} style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:11,color:t.text,width:52,flexShrink:0}}>{tier}</span>
+              <div style={{flex:1,background:"var(--muted)",borderRadius:99,height:5}}>
+                <div style={{height:5,borderRadius:99,background:t.fill,width:pct(Math.min(u,1)),transition:"width .7s"}}/>
+              </div>
+              <span style={{fontSize:11,color:"var(--dim)",width:88,textAlign:"right"}}>
+                {rt.active.toLocaleString()}/{rt.capacity.toLocaleString()}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="node-footer">
+        <div className="nf-item"><span className="nf-label">Queue </span><span className="nf-val">{node.queue_depth} jobs</span></div>
+        <div className="nf-item"><span className="nf-label">Seen </span><span className="nf-val">{ago(node.last_seen)}</span></div>
+      </div>
+    </div>
+  );
+}
+
+function PoolCard({pool}) {
+  const t = TIER[pool.tier]||TIER.wasm;
+  const ic = pool.tier==="wasm"?Icons.zap:pool.tier==="microvm"?Icons.cpu:Icons.monitor;
+  return (
+    <div className="card">
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
+        <div style={{padding:6,borderRadius:8,background:t.bg,border:`1px solid ${t.border}`}}>
+          <Icon d={ic} size={13} style={{color:t.text}} />
+        </div>
+        <span style={{fontWeight:600,fontSize:13,color:t.text,textTransform:"capitalize"}}>{pool.tier}</span>
+        <span style={{marginLeft:"auto",fontSize:11,color:"var(--dim)"}}>
+          {pool.pool_size>0?`pool: ${pool.pool_size}`:"stateless"}
+        </span>
+      </div>
+
+      <div style={{marginBottom:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:6,fontSize:11}}>
+          <span className="c-dim">Utilization</span>
+          <span className={loadClass(pool.utilization)}>{pct(pool.utilization)}</span>
+        </div>
+        <LoadBar value={pool.utilization} height="7px" />
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        <div className="pool-box" style={{background:t.bg,border:`1px solid ${t.border}`}}>
+          <div className="pool-val" style={{color:t.text}}>{pool.active}</div>
+          <div className="pool-lbl">active</div>
+        </div>
+        <div className="pool-box" style={{background:"var(--muted)",border:"1px solid var(--border)"}}>
+          <div className="pool-val" style={{color:"var(--sub)"}}>{pool.available}</div>
+          <div className="pool-lbl">available</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function JobsCard({jobs,queue}) {
+  const total = jobs.total_completed+jobs.total_failed;
+  const sr = total>0?jobs.total_completed/total:1;
+  const items = [
+    {label:"Completed",val:jobs.total_completed,cls:"c-green",ic:Icons.check},
+    {label:"Failed",   val:jobs.total_failed,    cls:"c-red",  ic:Icons.x   },
+    {label:"Pending",  val:jobs.total_pending,   cls:"c-amber",ic:Icons.clock},
+  ];
+  return (
+    <div className="card">
+      <SectionHdr icon={Icons.bar} title="Jobs Summary" />
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
+        {items.map(({label,val,cls,ic})=>(
+          <div key={label} className="jobs-box">
+            <Icon d={ic} size={13} cls={`${cls}`} style={{margin:"0 auto 6px"}} />
+            <div style={{fontSize:22,fontWeight:700}} className={cls}>{val.toLocaleString()}</div>
+            <div style={{fontSize:11,color:"var(--dim)",marginTop:4}}>{label}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{marginBottom:4}}>
+        <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:6}}>
+          <span className="c-dim">Success rate</span>
+          <span className="c-green">{pct(sr)}</span>
+        </div>
+        <div className="bar-wrap bar-sm">
+          <div className="bar-fill fill-green" style={{height:"100%",width:pct(sr)}}/>
+        </div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingTop:12,marginTop:12,borderTop:"1px solid var(--border)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <Icon d={Icons.db} size={12} cls="c-dim"/>
+          <span style={{fontSize:11,color:"var(--dim)"}}>Global queue</span>
+        </div>
+        <span style={{fontSize:13,fontWeight:600}}>{queue.global_depth} waiting</span>
+      </div>
+    </div>
+  );
+}
+
+function ToolsCard({tools}) {
+  const [filter,setFilter]=useState("all");
+  const tiers=["all","wasm","microvm","gui"];
+  const filtered=filter==="all"?tools:tools.filter(t=>t.tier===filter);
+  return (
+    <div className="card">
+      <SectionHdr icon={Icons.box} title="Tools Registry" count={tools.length} />
+      <div className="tabs">
+        {tiers.map(t=>(
+          <button key={t} className={`tab${filter===t?" active":""}`} onClick={()=>setFilter(t)}>{t}</button>
+        ))}
+      </div>
+      <div>
+        {filtered.map(tool=>(
+          <div key={tool.name} className="tool-row">
+            <TierBadge tier={tool.tier}/>
+            <span className="tool-name">{tool.name}</span>
+            <span className="tool-entry">{tool.entrypoint}</span>
+            <span className="tool-timeout">{tool.timeout}s</span>
+            <Icon d={Icons.chevron} size={11} cls="c-dim" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── App ───────────────────────────────────────────────────────────────────────
+function App() {
+  const [data,setData]=useState(null);
+  const [loading,setLoading]=useState(false);
+  const [lastRefresh,setLastRefresh]=useState(null);
+  const [autoRefresh,setAutoRefresh]=useState(true);
+
+  const refresh = useCallback(async()=>{
+    setLoading(true);
+    try {
+      // Production: uncomment and remove mock
+      // const res = await fetch("/v1/dashboard");
+      // const d = await res.json();
+      await new Promise(r=>setTimeout(r,300));
+      setData(generateMock());
+      setLastRefresh(new Date());
+    } finally { setLoading(false); }
+  },[]);
+
+  useEffect(()=>{refresh();},[]);
+  useEffect(()=>{
+    if(!autoRefresh)return;
+    const id=setInterval(refresh,5000);
+    return ()=>clearInterval(id);
+  },[autoRefresh,refresh]);
+
+  if(!data) return (
+    <div className="loading-screen">
+      <div className="spinner"/>
+      <p className="c-dim" style={{fontSize:13}}>Loading platform state…</p>
+    </div>
+  );
+
+  const {cluster,nodes,pools,queue,jobs,tools}=data;
+
+  return (
+    <>
+      <header>
+        <div className="wrap header-inner">
+          <div className="logo">
+            <div className="dots">
+              <div className="dot" style={{background:"#a78bfa"}}/>
+              <div className="dot" style={{background:"#60a5fa"}}/>
+              <div className="dot" style={{background:"#34d399"}}/>
+            </div>
+            <span className="brand">sandbox-platform</span>
+            <span className="sep">·</span>
+            <span className="brand-sub">control plane</span>
+          </div>
+          <div className="nav-right">
+            {lastRefresh&&<span className="last-refresh">Updated {ago(lastRefresh.toISOString())}</span>}
+            <button className={`btn-live${autoRefresh?"":" paused"}`} onClick={()=>setAutoRefresh(v=>!v)}>
+              {autoRefresh?"● Live":"⏸ Paused"}
+            </button>
+            <button className="btn-refresh" onClick={refresh}>
+              <Icon d={Icons.refresh} size={14} cls={`c-sub${loading?" spin":""}`}/>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="wrap">
+        {/* KPIs */}
+        <div className="g4">
+          <StatCard icon={Icons.server} label="Active Nodes"
+            value={cluster.active_nodes}
+            sub={`${cluster.offline_nodes} offline`}
+            colorClass={cluster.offline_nodes>0?"c-amber":""}/>
+          <StatCard icon={Icons.activity} label="Avg Load"
+            value={pct(cluster.avg_load)}
+            sub="across active nodes"
+            colorClass={loadClass(cluster.avg_load)}/>
+          <StatCard icon={Icons.layers} label="Queue Depth"
+            value={queue.global_depth}
+            sub="jobs waiting"
+            colorClass={queue.global_depth>20?"c-amber":""}/>
+          <StatCard icon={Icons.git} label="Tools"
+            value={tools.length} sub="registered"/>
+        </div>
+
+        {/* Nodes */}
+        <section>
+          <SectionHdr icon={Icons.server} title="Nodes" count={nodes.length}/>
+          <div className="g2">
+            {nodes.map(n=><NodeCard key={n.id} node={n}/>)}
+          </div>
+        </section>
+
+        {/* Pools */}
+        <section>
+          <SectionHdr icon={Icons.hdd} title="Runtime Pools"/>
+          <div className="g3">
+            <PoolCard pool={pools.wasm}/>
+            <PoolCard pool={pools.microvm}/>
+            <PoolCard pool={pools.gui}/>
+          </div>
+        </section>
+
+        {/* Jobs + Tools */}
+        <div className="g-lg">
+          <JobsCard jobs={jobs} queue={queue}/>
+          <ToolsCard tools={tools}/>
+        </div>
+
+        <div className="page-footer">
+          sandbox-platform v1.1 · <code>GET /v1/dashboard</code> · refreshes every 5s
+        </div>
+      </main>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
